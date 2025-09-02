@@ -1551,3 +1551,123 @@ function weyer_create_sample_csv() {
     });
 }
 weyer_create_sample_csv();
+
+/**
+ * БЫСТРЫЕ ФИКСЫ - добавить в конец functions.php
+ */
+
+// Исправление подключения скриптов
+function weyer_enqueue_scripts_fix() {
+    wp_enqueue_script('weyer-main', get_template_directory_uri() . '/assets/js/main.js', array('jquery'), '1.0', true);
+
+    if (is_post_type_archive('product') || is_tax('product_category')) {
+        wp_enqueue_script('weyer-catalog', get_template_directory_uri() . '/assets/js/catalog.js', array('jquery'), '1.0', true);
+        wp_localize_script('weyer-catalog', 'weyer_ajax', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('weyer_catalog_nonce')
+        ));
+    }
+
+    if (is_front_page()) {
+        wp_enqueue_script('weyer-hero', get_template_directory_uri() . '/assets/js/hero.js', array(), '1.0', true);
+    }
+}
+add_action('wp_enqueue_scripts', 'weyer_enqueue_scripts_fix', 20);
+
+// Создать директории для JS
+function weyer_create_js_directory() {
+    $js_dir = get_template_directory() . '/assets/js';
+    if (!file_exists($js_dir)) {
+        wp_mkdir_p($js_dir);
+    }
+}
+add_action('after_setup_theme', 'weyer_create_js_directory');
+
+// Быстрый обработчик запроса КП
+add_action('wp_ajax_request_quote', 'weyer_quick_quote');
+add_action('wp_ajax_nopriv_request_quote', 'weyer_quick_quote');
+
+function weyer_quick_quote() {
+    $name = sanitize_text_field($_POST['name']);
+    $email = sanitize_email($_POST['email']);
+    $phone = sanitize_text_field($_POST['phone']);
+    $product_id = intval($_POST['product_id']);
+    $quantity = intval($_POST['quantity']) ?: 1;
+
+    if (empty($name) || empty($email) || empty($phone)) {
+        wp_send_json_error('Заполните все поля');
+    }
+
+    $product = get_post($product_id);
+    $subject = 'Запрос КП - ' . get_bloginfo('name');
+    $message = "Новый запрос КП:\n\n";
+    $message .= "Товар: {$product->post_title}\n";
+    $message .= "Количество: {$quantity}\n\n";
+    $message .= "Клиент:\n";
+    $message .= "Имя: {$name}\n";
+    $message .= "Email: {$email}\n";
+    $message .= "Телефон: {$phone}\n";
+    $message .= "Дата: " . current_time('d.m.Y H:i');
+
+    if (wp_mail(get_option('admin_email'), $subject, $message)) {
+        wp_send_json_success('Запрос отправлен!');
+    } else {
+        wp_send_json_error('Ошибка отправки');
+    }
+}
+
+// Исправление breadcrumbs если функция не существует
+if (!function_exists('weyer_breadcrumbs')) {
+    function weyer_breadcrumbs() {
+        echo '<a href="' . home_url() . '">Главная</a>';
+
+        if (is_singular('product')) {
+            echo ' > <a href="' . get_post_type_archive_link('product') . '">Каталог</a>';
+            echo ' > ' . get_the_title();
+        } elseif (is_post_type_archive('product')) {
+            echo ' > Каталог';
+        } elseif (is_page()) {
+            echo ' > ' . get_the_title();
+        }
+    }
+}
+
+// Создать папки и placeholder изображения
+function weyer_setup_assets() {
+    $dirs = array(
+            get_template_directory() . '/assets',
+            get_template_directory() . '/assets/js',
+            get_template_directory() . '/assets/css',
+            get_template_directory() . '/assets/images',
+    );
+
+    foreach ($dirs as $dir) {
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+        }
+    }
+}
+add_action('after_setup_theme', 'weyer_setup_assets');
+
+// Сброс настроек при активации темы
+function weyer_theme_activation_quick() {
+    flush_rewrite_rules();
+
+    // Создать базовые страницы если их нет
+    $pages = array(
+            'compare' => 'Сравнение товаров',
+            'favorites' => 'Избранное',
+    );
+
+    foreach ($pages as $slug => $title) {
+        if (!get_page_by_path($slug)) {
+            wp_insert_post(array(
+                    'post_title' => $title,
+                    'post_name' => $slug,
+                    'post_status' => 'publish',
+                    'post_type' => 'page',
+            ));
+        }
+    }
+}
+register_activation_hook(__FILE__, 'weyer_theme_activation_quick');
