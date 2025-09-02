@@ -33,8 +33,8 @@
                             <h4>Категории</h4>
                             <?php
                             $categories = get_terms(array(
-                                    'taxonomy' => 'product_category',
-                                    'hide_empty' => true,
+                                'taxonomy' => 'product_category',
+                                'hide_empty' => true,
                             ));
 
                             if ($categories && !is_wp_error($categories)):
@@ -52,7 +52,7 @@
                                         <li>
                                             <label>
                                                 <input type="radio" name="category" value="<?php echo $category->term_id; ?>"
-                                                        <?php echo $current_cat_id == $category->term_id ? 'checked' : ''; ?>>
+                                                    <?php echo $current_cat_id == $category->term_id ? 'checked' : ''; ?>>
                                                 <span><?php echo $category->name; ?> (<?php echo $category->count; ?>)</span>
                                             </label>
                                         </li>
@@ -142,11 +142,11 @@
                         <div class="catalog-pagination">
                             <?php
                             echo paginate_links(array(
-                                    'total' => $wp_query->max_num_pages,
-                                    'current' => max(1, get_query_var('paged')),
-                                    'format' => '?paged=%#%',
-                                    'prev_text' => '← Назад',
-                                    'next_text' => 'Далее →',
+                                'total' => $wp_query->max_num_pages,
+                                'current' => max(1, get_query_var('paged')),
+                                'format' => '?paged=%#%',
+                                'prev_text' => '← Назад',
+                                'next_text' => 'Далее →',
                             ));
                             ?>
                         </div>
